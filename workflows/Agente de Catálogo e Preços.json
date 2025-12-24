@@ -1,0 +1,394 @@
+{
+  "name": "Agente de Catálogo e Preços",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "query_field",
+              "name": "query",
+              "value": "={{ $json.query || $json.input || $json.text || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "categoria_field",
+              "name": "categoria",
+              "value": "={{ $json.categoria || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "query_clean",
+              "name": "query_limpo",
+              "value": "={{ ($json.query || $json.input || $json.text) ? ($json.query || $json.input || $json.text).toLowerCase().trim() : '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bfba185f-fe86-4b26-ab58-761afc1235f5",
+      "name": "Processar Entrada",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        -544,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check_query",
+              "leftValue": "={{ $json.query_limpo }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9fe21cf0-c943-42d4-8b7e-2e80cdaaaae3",
+      "name": "Query Válida?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery"
+      },
+      "id": "1b417ef5-07ad-48d8-a718-9e71db0b6f2f",
+      "name": "Buscar Produtos",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        320
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "MNzl5zkOYbmaa4r8",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Processar resultados da busca\nconst items = $input.all();\nconst isAlternativa = $input.first().json.is_alternativa || false;\n\n// Filtrar apenas itens válidos (com id e nome)\nconst itemsValidos = items.filter(item => {\n  const p = item.json;\n  return p.id != null && (p.produto || p.nome) != null;\n});\n\nif (itemsValidos.length === 0) {\n  return [{\n    json: {\n      encontrou: false,\n      total: 0,\n      produtos: [],\n      mensagem: \"Nenhum produto encontrado com os critérios informados.\"\n    }\n  }];\n}\n\n// Formatar produtos\nconst produtos = itemsValidos.map(item => {\n  const p = item.json;\n  return {\n    id: p.id,\n    nome: p.produto || p.nome,\n    categoria: p.categoria,\n    tipo: p.tipo,\n    marca: p.marca,\n    preco: parseFloat(p.preco_decimal),\n    preco_formatado: `R$ ${parseFloat(p.preco_decimal).toFixed(2).replace('.', ',')}`,\n    tamanho: p.massa_volume,\n    estoque_disponivel: p.estoque_disponivel,\n    em_estoque: p.estoque_disponivel > 0\n  };\n});\n\n// Calcular estatísticas\nconst precos = produtos.map(p => p.preco);\nconst precoMedio = precos.reduce((a, b) => a + b, 0) / precos.length;\nconst precoMinimo = Math.min(...precos);\nconst precoMaximo = Math.max(...precos);\n\n// Agrupar por categoria\nconst categorias = [...new Set(produtos.map(p => p.categoria).filter(c => c))];\n\nconst mensagemFinal = isAlternativa \n  ? `Não encontramos exatamente o que você pediu, mas temos ${produtos.length} opção(ões) disponível(is) que podem te interessar.`\n  : `Encontrados ${produtos.length} produto(s) correspondente(s).`;\n\nreturn [{\n  json: {\n    encontrou: !isAlternativa,\n    total: produtos.length,\n    produtos: produtos,\n    estatisticas: {\n      preco_minimo: parseFloat(precoMinimo.toFixed(2)),\n      preco_maximo: parseFloat(precoMaximo.toFixed(2)),\n      preco_medio: parseFloat(precoMedio.toFixed(2)),\n      categorias_encontradas: categorias\n    },\n    mensagem: mensagemFinal\n  }\n}];"
+      },
+      "id": "25e20213-318b-4b5f-93b1-86d11eeb66c9",
+      "name": "Formatar Resultados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check_valid_results",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "any",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "check_nome",
+              "leftValue": "={{ $json.produto || $json.nome }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0fe0324e-c8ae-4bf4-89a9-f5238ffbe581",
+      "name": "Tem Resultados?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        128,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "produtos_catalogo",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "ativo",
+              "keyValue": "true"
+            }
+          ]
+        }
+      },
+      "id": "3dc52364-ca6a-4945-9e68-528dcb4c59d0",
+      "name": "Buscar Alternativas",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        128,
+        480
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "MNzl5zkOYbmaa4r8",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "mark_alternativa",
+              "name": "is_alternativa",
+              "value": true,
+              "type": "boolean"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "cf9d6007-b5cc-4a05-9fb5-5764657fb5bf",
+      "name": "Marcar como Alternativa",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        432,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "error_response",
+              "name": "encontrou",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "error_message",
+              "name": "mensagem",
+              "value": "Por favor, informe o produto que deseja buscar.",
+              "type": "string"
+            },
+            {
+              "id": "empty_produtos",
+              "name": "produtos",
+              "value": "=[]",
+              "type": "array"
+            },
+            {
+              "id": "total_zero",
+              "name": "total",
+              "value": 0,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "922f2147-68ee-45dd-b079-0cb171d53414",
+      "name": "Erro - Query Vazia",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        -96,
+        480
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "09c88cde-d82c-4d83-b961-b53690506e17",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        352,
+        768
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "e6ec23a1-06e0-4ee4-b163-6e6b21bec1bd",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        384
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Processar Entrada": {
+      "main": [
+        [
+          {
+            "node": "Query Válida?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Válida?": {
+      "main": [
+        [
+          {
+            "node": "Buscar Produtos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Erro - Query Vazia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Produtos": {
+      "main": [
+        [
+          {
+            "node": "Tem Resultados?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem Resultados?": {
+      "main": [
+        [
+          {
+            "node": "Formatar Resultados",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Buscar Alternativas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Alternativas": {
+      "main": [
+        [
+          {
+            "node": "Marcar como Alternativa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar como Alternativa": {
+      "main": [
+        [
+          {
+            "node": "Formatar Resultados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar Resultados": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Erro - Query Vazia": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Processar Entrada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "1f65cd74-4e9f-4c7e-b51f-279bab4035c6",
+  "meta": {
+    "instanceId": "f303498348f82763e6bee7e00c924a8fd666908a992acafd0cb9ea4677a58905"
+  },
+  "id": "N70iDeR3dr7GkS90",
+  "tags": [
+    {
+      "updatedAt": "2025-12-18T18:29:05.194Z",
+      "createdAt": "2025-12-18T18:29:05.194Z",
+      "id": "gHrvy9aKsYKmfZVM",
+      "name": "Agente Especializado"
+    }
+  ]
+}
