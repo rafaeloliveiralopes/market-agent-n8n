@@ -1,8 +1,8 @@
-Aqui está um `copilot-instructions.md` ideal para este projeto, com foco em modularidade, mudanças mínimas, segurança, desempenho, e um fluxo de trabalho Git disciplinado (branch por atividade, checkout, validação, add e commit no padrão Angular).
-
-Copie e cole exatamente como arquivo `copilot-instructions.md`:
-
-```md
+---
+name: copilot
+description: Guidelines for branch workflow, commit messages, and project language/documentation rules.
+applyTo: **
+---
 # Copilot Instructions - Market Agent n8n
 
 You are working in a production grade, modular n8n automation project for grocery order handling via WhatsApp.
@@ -280,4 +280,41 @@ Before editing anything, always output:
 
 Only then apply changes.
 
-```
+# Always use this instructions file to consult when generating or modifying files in this repository.
+
+## Branch Workflow Guidelines
+
+- +- If a task references an existing branch, use that branch.
+  +- If the referenced branch does not exist (locally or on origin), create a new branch from the default base branch (usually `main`) and apply the changes there.
+  +- Do not commit directly to `main` unless explicitly requested.
+- +### Example use case
+- +- You need to implement "Activity: fix AuthControllerLogoutTest" and the branch `fix/auth-controller-logout-test` does not exist.
+- - Create it from `main` and commit the work there.
+- - Open a PR from `fix/auth-controller-logout-test` to `main` when ready.
+
+- ## Commit Message Guidelines
+
+  - Use the present tense ("Add feature" not "Added feature").
+  - Use the imperative mood ("Move cursor to..." not "Moves cursor to...").
+  - Limit the subject line to 50 characters.
+  - Wrap the body at 72 characters.
+  - Use the body to explain what and why vs. how.
+  - Reference issues and pull requests liberally after the first line.
+  - Use conventional commit types with scope (feat, fix, docs, style, refactor, perf, test, chore), ALWAYS when possible.
+  - Follow the Conventional Commits specification: https://www.conventionalcommits.org/en/v1.0.0/
+  - Use Angular commit format: `type(scope): subject`
+  - Examples:
+    - feat(auth): add user login feature
+    - fix(api): resolve crash on startup
+    - docs(api): update API documentation for v2
+    - style(backend): reformat codebase with Prettier
+    - refactor(auth): simplify authentication logic
+    - perf(db): improve database query performance
+    - test(user): add unit tests for user service
+    - chore(deps): update dependencies
+    - feat(lgpd): add data retention policies
+    - fix(migration): correct V38 audit log partition
+
+## PROJECT LANGUAGE & DOCUMENTATION RULES:
+
+- ALL COMMIT MESSAGES ALWAYS, ALWAYS, ALWAYS MUST BE WRITTEN IN ENGLISH.
